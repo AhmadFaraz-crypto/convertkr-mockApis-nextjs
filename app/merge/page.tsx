@@ -15,6 +15,11 @@ interface MergeUrls {
   mergedFileUrl: string;
 }
 
+interface ValidationError {
+  field: string;
+  message: string;
+}
+
 export default function MergePage() {
   const router = useRouter()
   const [urls, setUrls] = useState<MergeUrls>({
@@ -24,6 +29,16 @@ export default function MergePage() {
   const [result, setResult] = useState<MergeResponse | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [validationErrors, setValidationErrors] = useState<ValidationError[]>([])
+
+  const validateUrl = (url: string): boolean => {
+    try {
+      new URL(url);
+      return url.toLowerCase().endsWith('.pdf');
+    } catch {
+      return false;
+    }
+  }
 
   const handleUrlChange = (index: number, value: string) => {
     const newUrls = [...urls.inputUrls]
@@ -32,6 +47,7 @@ export default function MergePage() {
       ...prev,
       inputUrls: newUrls
     }))
+    setValidationErrors(validationErrors.filter(error => error.field !== `inputUrl-${index}`))
   }
 
   const handleMergedUrlChange = (value: string) => {
@@ -39,6 +55,7 @@ export default function MergePage() {
       ...prev,
       mergedFileUrl: value
     }))
+    setValidationErrors(validationErrors.filter(error => error.field !== 'mergedFileUrl'))
   }
 
   const addUrlInput = () => {
@@ -59,20 +76,54 @@ export default function MergePage() {
       ...prev,
       inputUrls: newUrls
     }))
+    setValidationErrors(validationErrors.filter(error => !error.field.includes(`-${index}`)))
+  }
+
+  const validateInputs = (): ValidationError[] => {
+    const errors: ValidationError[] = [];
+
+    // Validate input URLs
+    urls.inputUrls.forEach((url, index) => {
+      if (!url) {
+        errors.push({ 
+          field: `inputUrl-${index}`, 
+          message: `Input URL ${index + 1} is required` 
+        })
+      } else if (!validateUrl(url)) {
+        errors.push({ 
+          field: `inputUrl-${index}`, 
+          message: `Invalid PDF URL for input ${index + 1}. URL must end with .pdf` 
+        })
+      }
+    })
+
+    // Validate merged file URL
+    if (!urls.mergedFileUrl) {
+      errors.push({ 
+        field: 'mergedFileUrl', 
+        message: 'Merged file URL is required' 
+      })
+    } else if (!validateUrl(urls.mergedFileUrl)) {
+      errors.push({ 
+        field: 'mergedFileUrl', 
+        message: 'Invalid PDF URL for merged file. URL must end with .pdf' 
+      })
+    }
+
+    return errors;
   }
 
   const handleMergeFiles = async () => {
     try {
+      const errors = validateInputs()
+      if (errors.length > 0) {
+        setValidationErrors(errors)
+        return
+      }
+
       setIsLoading(true)
       setError(null)
-
-      // Validate URLs
-      if (urls.inputUrls.some(url => !url)) {
-        throw new Error("Please provide all input file URLs")
-      }
-      if (!urls.mergedFileUrl) {
-        throw new Error("Please provide the merged file URL")
-      }
+      setValidationErrors([])
 
       const request: MergeRequest = {
         files: urls.inputUrls,
@@ -86,6 +137,10 @@ export default function MergePage() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const getFieldError = (field: string): string | undefined => {
+    return validationErrors.find(error => error.field === field)?.message
   }
 
   return (
@@ -110,18 +165,23 @@ export default function MergePage() {
         </CardHeader>
         <CardContent className="space-y-4">
           {urls.inputUrls.map((url, index) => (
-            <div key={index} className="flex items-center gap-2">
-              <Input
-                type="url"
-                placeholder={`File ${index + 1} URL`}
-                value={url}
-                onChange={(e) => handleUrlChange(index, e.target.value)}
-                className="flex-1"
-              />
-              {index >= 2 && (
-                <Button variant="outline" size="icon" onClick={() => removeUrlInput(index)}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+            <div key={index} className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Input
+                  type="url"
+                  placeholder={`File ${index + 1} URL`}
+                  value={url}
+                  onChange={(e) => handleUrlChange(index, e.target.value)}
+                  className={`flex-1 ${getFieldError(`inputUrl-${index}`) ? 'border-red-500' : ''}`}
+                />
+                {index >= 2 && (
+                  <Button variant="outline" size="icon" onClick={() => removeUrlInput(index)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+              {getFieldError(`inputUrl-${index}`) && (
+                <p className="text-sm text-red-500">{getFieldError(`inputUrl-${index}`)}</p>
               )}
             </div>
           ))}
@@ -131,14 +191,17 @@ export default function MergePage() {
             Add Another File
           </Button>
 
-          <div className="pt-4 border-t">
+          <div className="pt-4 border-t space-y-2">
             <Input
               type="url"
               placeholder="Merged File URL"
               value={urls.mergedFileUrl}
               onChange={(e) => handleMergedUrlChange(e.target.value)}
-              className="w-full"
+              className={`w-full ${getFieldError('mergedFileUrl') ? 'border-red-500' : ''}`}
             />
+            {getFieldError('mergedFileUrl') && (
+              <p className="text-sm text-red-500">{getFieldError('mergedFileUrl')}</p>
+            )}
           </div>
         </CardContent>
         <CardFooter>
