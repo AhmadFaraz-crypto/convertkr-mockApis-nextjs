@@ -7,6 +7,7 @@ export interface SplitRequest {
 }
 
 export interface SplitResponse {
+  id: number;
   file_name: string;
   page_ranges: Array<[number, number]>;
   split_files: string[];
