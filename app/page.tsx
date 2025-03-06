@@ -166,9 +166,7 @@ export default function Home() {
                 </div>
                 <div className="flex flex-col gap-2 min-[400px]:flex-row">
                   <Button variant="outline"><a target="_blank" href="https://www.postman.com/ahmadfarazjutt3/convertkr/overview">View Documentation</a></Button>
-                  <Link href="/merge">
-                    <Button>Try Demo</Button>
-                  </Link>
+                  <Button><a target="_blank" href="https://convertkr.com/mock-apis">Try Demo</a></Button>
                 </div>
               </div>
             </div>
