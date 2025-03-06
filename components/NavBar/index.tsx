@@ -1,35 +1,54 @@
-import Link from "next/link";
+"use client"
 
-export default function NavBar() {
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { cn } from "@/lib/utils"
+import { Github } from "lucide-react" // Add Github icon
+
+const navigation = [
+  { name: "Merge PDF", href: "/merge" },
+  { name: "Split PDF", href: "/split" },
+  { name: "Convert Files", href: "/conversions" },
+]
+
+export default function Navbar() {
+  const pathname = usePathname()
+
   return (
-    <header className="sticky top-0 z-40 w-full border-b bg-background">
-        <div className="container flex h-16 items-center space-x-4 sm:justify-between sm:space-x-0">
-          <div className="flex gap-6 md:gap-10">
-            <Link href="/" className="flex items-center space-x-2">
-              <span className="inline-block font-bold">ConvertKr API Demo</span>
-            </Link>
-            <nav className="flex gap-6">
-              <Link
-                href="/merge"
-                className="flex items-center text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
-              >
-                Merge
-              </Link>
-              <Link
-                href="/split"
-                className="flex items-center text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
-              >
-                Split
-              </Link>
-              <Link
-                href="/conversions"
-                className="flex items-center text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
-              >
-                Conversions
-              </Link>
-            </nav>
+    <nav className="border-b">
+      <div className="container flex h-16 items-center justify-between">
+        <div className="flex items-center">
+          <Link href="/" className="mr-6 text-xl font-bold">
+            PDF Tools
+          </Link>
+          <div className="flex gap-6">
+            {navigation.map((item) => {
+              const isActive = pathname.startsWith(item.href)
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={cn(
+                    "text-sm font-medium transition-colors hover:text-primary",
+                    isActive ? "text-black dark:text-white" : "text-muted-foreground"
+                  )}
+                >
+                  {item.name}
+                </Link>
+              )
+            })}
           </div>
         </div>
-      </header>
+        <a
+          href="https://github.com/AhmadFaraz-crypto/convertkr-mockApis-nextjs"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary"
+        >
+          <Github className="h-5 w-5" />
+          <span className="hidden sm:inline">View on GitHub</span>
+        </a>
+      </div>
+    </nav>
   )
 }
