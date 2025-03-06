@@ -11,6 +11,7 @@ export default function ViewSplitFilesPage() {
   const [splitFiles, setSplitFiles] = useState<SplitResponse[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [fileErrors, setFileErrors] = useState<{ [key: string]: string }>({})
 
   useEffect(() => {
     fetchSplitFiles()
@@ -26,6 +27,31 @@ export default function ViewSplitFilesPage() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const isValidUrl = (url: string): boolean => {
+    try {
+      new URL(url)
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  const handleFileClick = (url: string, errorKey: string) => {
+    if (!isValidUrl(url)) {
+      setFileErrors(prev => ({
+        ...prev,
+        [errorKey]: "Invalid URL format"
+      }))
+      return false
+    }
+    setFileErrors(prev => {
+      const newErrors = { ...prev }
+      delete newErrors[errorKey]
+      return newErrors
+    })
+    return true
   }
 
   if (isLoading) {
@@ -56,66 +82,102 @@ export default function ViewSplitFilesPage() {
         </Alert>
       ) : (
         <div className="grid gap-6">
-          {splitFiles.map((split, index) => (
+          {splitFiles.map((splitFile, index) => (
             <Card key={index}>
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">Split Operation {index + 1}</CardTitle>
-                  <Button variant="outline" size="sm" asChild>
-                    <a 
-                      href={split.file_name} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                    >
-                      <Eye className="mr-2 h-4 w-4" />
-                      View Original PDF
-                    </a>
-                  </Button>
-                </div>
+                <CardTitle className="text-lg">Split Operation {index + 1}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <p className="text-sm font-medium">Original File:</p>
-                    <div className="flex items-center text-sm p-2 bg-muted rounded-md">
-                      <FileText className="h-4 w-4 mr-2" />
-                      {split.file_name.split("/").pop()}
+                    <div>
+                      <div className="flex items-center justify-between p-2 bg-muted rounded-md">
+                        <div className="flex items-center">
+                          <FileText className="h-4 w-4 mr-2" />
+                          <span className="text-sm">{splitFile.file_name.split("/").pop()}</span>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => {
+                              if (handleFileClick(splitFile.file_name, `original-${index}`)) {
+                                window.open(splitFile.file_name, '_blank')
+                              }
+                            }}
+                          >
+                            <Eye className="mr-2 h-4 w-4" />
+                            Open Original
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => {
+                              if (handleFileClick(splitFile.file_name, `original-${index}`)) {
+                                const a = document.createElement('a')
+                                a.href = splitFile.file_name
+                                a.download = splitFile.file_name.split("/").pop() || ""
+                                a.click()
+                              }
+                            }}
+                          >
+                            <Download className="mr-2 h-4 w-4" />
+                            Download
+                          </Button>
+                        </div>
+                      </div>
+                      {fileErrors[`original-${index}`] && (
+                        <p className="text-sm text-red-500 mt-1">{fileErrors[`original-${index}`]}</p>
+                      )}
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <p className="text-sm font-medium">Split Files:</p>
-                    <div className="grid gap-2">
-                      {split.split_files.map((file, fileIndex) => (
-                        <div key={fileIndex} className="flex items-center justify-between p-2 bg-muted rounded-md">
-                          <div className="flex items-center">
-                            <FileText className="h-4 w-4 mr-2" />
-                            <span className="text-sm">
-                              Part {fileIndex + 1} (Pages {split.page_ranges[fileIndex][0]}-{split.page_ranges[fileIndex][1]})
-                            </span>
-                          </div>
-                          <div className="flex gap-2">
-                            <Button variant="outline" size="sm" asChild>
-                              <a 
-                                href={file} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
+                    <p className="text-sm font-medium">Split Parts:</p>
+                    <div className="space-y-2">
+                      {splitFile.split_files.map((file, fileIndex) => (
+                        <div key={fileIndex}>
+                          <div className="flex items-center justify-between p-2 bg-muted rounded-md">
+                            <div className="flex items-center">
+                              <FileText className="h-4 w-4 mr-2" />
+                              <span className="text-sm">
+                                Part {fileIndex + 1} (Pages {splitFile.page_ranges[fileIndex][0]}-{splitFile.page_ranges[fileIndex][1]})
+                              </span>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => {
+                                  if (handleFileClick(file, `split-${index}-${fileIndex}`)) {
+                                    window.open(file, '_blank')
+                                  }
+                                }}
                               >
                                 <Eye className="mr-2 h-4 w-4" />
                                 Open
-                              </a>
-                            </Button>
-                            <Button variant="outline" size="sm" asChild>
-                              <a 
-                                href={file} 
-                                download
-                                rel="noopener noreferrer"
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => {
+                                  if (handleFileClick(file, `split-${index}-${fileIndex}`)) {
+                                    const a = document.createElement('a')
+                                    a.href = file
+                                    a.download = file.split("/").pop() || ""
+                                    a.click()
+                                  }
+                                }}
                               >
                                 <Download className="mr-2 h-4 w-4" />
                                 Download
-                              </a>
-                            </Button>
+                              </Button>
+                            </div>
                           </div>
+                          {fileErrors[`split-${index}-${fileIndex}`] && (
+                            <p className="text-sm text-red-500 mt-1">{fileErrors[`split-${index}-${fileIndex}`]}</p>
+                          )}
                         </div>
                       ))}
                     </div>

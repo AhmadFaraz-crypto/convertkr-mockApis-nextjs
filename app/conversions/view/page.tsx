@@ -11,6 +11,7 @@ export default function ViewConversionsPage() {
   const [conversions, setConversions] = useState<ConversionResponse[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [fileErrors, setFileErrors] = useState<{ [key: string]: string }>({})
 
   useEffect(() => {
     fetchConversions()
@@ -26,6 +27,31 @@ export default function ViewConversionsPage() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const isValidUrl = (url: string): boolean => {
+    try {
+      new URL(url)
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  const handleFileClick = (url: string, errorKey: string) => {
+    if (!isValidUrl(url)) {
+      setFileErrors(prev => ({
+        ...prev,
+        [errorKey]: "Invalid URL format"
+      }))
+      return false
+    }
+    setFileErrors(prev => {
+      const newErrors = { ...prev }
+      delete newErrors[errorKey]
+      return newErrors
+    })
+    return true
   }
 
   if (isLoading) {
@@ -75,28 +101,38 @@ export default function ViewConversionsPage() {
                         <span className="text-sm">{conversion.file_url.split("/").pop()}</span>
                       </div>
                       <div className="flex gap-2">
-                        <Button variant="outline" size="sm" asChild>
-                          <a 
-                            href={conversion.file_url} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                          >
-                            <Eye className="mr-2 h-4 w-4" />
-                            Open Original
-                          </a>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => {
+                            if (handleFileClick(conversion.file_url, `original-${index}`)) {
+                              window.open(conversion.file_url, '_blank')
+                            }
+                          }}
+                        >
+                          <Eye className="mr-2 h-4 w-4" />
+                          Open Original
                         </Button>
-                        <Button variant="outline" size="sm" asChild>
-                          <a 
-                            href={conversion.file_url} 
-                            download
-                            rel="noopener noreferrer"
-                          >
-                            <Download className="mr-2 h-4 w-4" />
-                            Download
-                          </a>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => {
+                            if (handleFileClick(conversion.file_url, `original-${index}`)) {
+                              const a = document.createElement('a')
+                              a.href = conversion.file_url
+                              a.download = conversion.file_url.split("/").pop() || ""
+                              a.click()
+                            }
+                          }}
+                        >
+                          <Download className="mr-2 h-4 w-4" />
+                          Download
                         </Button>
                       </div>
                     </div>
+                    {fileErrors[`original-${index}`] && (
+                      <p className="text-sm text-red-500 mt-1">{fileErrors[`original-${index}`]}</p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -107,28 +143,38 @@ export default function ViewConversionsPage() {
                         <span className="text-sm">{conversion.output_file_url.split("/").pop()}</span>
                       </div>
                       <div className="flex gap-2">
-                        <Button variant="outline" size="sm" asChild>
-                          <a 
-                            href={conversion.output_file_url} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                          >
-                            <Eye className="mr-2 h-4 w-4" />
-                            Open Converted
-                          </a>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => {
+                            if (handleFileClick(conversion.output_file_url, `converted-${index}`)) {
+                              window.open(conversion.output_file_url, '_blank')
+                            }
+                          }}
+                        >
+                          <Eye className="mr-2 h-4 w-4" />
+                          Open Converted
                         </Button>
-                        <Button variant="outline" size="sm" asChild>
-                          <a 
-                            href={conversion.output_file_url} 
-                            download
-                            rel="noopener noreferrer"
-                          >
-                            <Download className="mr-2 h-4 w-4" />
-                            Download
-                          </a>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => {
+                            if (handleFileClick(conversion.output_file_url, `converted-${index}`)) {
+                              const a = document.createElement('a')
+                              a.href = conversion.output_file_url
+                              a.download = conversion.output_file_url.split("/").pop() || ""
+                              a.click()
+                            }
+                          }}
+                        >
+                          <Download className="mr-2 h-4 w-4" />
+                          Download
                         </Button>
                       </div>
                     </div>
+                    {fileErrors[`converted-${index}`] && (
+                      <p className="text-sm text-red-500 mt-1">{fileErrors[`converted-${index}`]}</p>
+                    )}
                   </div>
                 </div>
               </CardContent>
