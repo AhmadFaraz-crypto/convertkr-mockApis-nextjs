@@ -9,13 +9,18 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Scissors, Download, Loader2, Plus, Trash2 } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { createSplit, type SplitResponse } from "../lib/api"
 import { useRouter } from 'next/navigation'
+import { SplitRequest, SplitResponse, splitService } from "@/services/split.service"
 
 interface PageRange {
   start: number;
   end: number;
   splitUrl: string;
+}
+
+interface ValidationError {
+  field: string;
+  message: string;
 }
 
 export default function SplitPage() {
@@ -28,24 +33,23 @@ export default function SplitPage() {
   const [result, setResult] = useState<SplitResponse | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [validationErrors, setValidationErrors] = useState<ValidationError[]>([])
 
-  const generateSplitUrl = (baseUrl: string, index: number) => {
-    const fileName = baseUrl.split('/').pop()?.split('.')[0] || 'file';
-    return `${baseUrl.substring(0, baseUrl.lastIndexOf('/'))}/${fileName}_part_${index + 1}.pdf`;
+  const validateUrl = (url: string): boolean => {
+    try {
+      new URL(url);
+      return url.toLowerCase().endsWith('.pdf');
+    } catch {
+      return false;
+    }
   }
 
   const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newUrl = e.target.value;
     setFileUrl(newUrl)
-    // Update all split URLs when main URL changes
-    if (newUrl) {
-      setPageRanges(prev => prev.map((range, index) => ({
-        ...range,
-        splitUrl: generateSplitUrl(newUrl, index + 1)
-      })))
-    }
     setResult(null)
     setError(null)
+    setValidationErrors(validationErrors.filter(error => error.field !== 'fileUrl'))
   }
 
   const handlePageRangeChange = (index: number, field: 'start' | 'end', value: string) => {
@@ -56,6 +60,7 @@ export default function SplitPage() {
           ? { ...range, [field]: numValue }
           : range
       ))
+      setValidationErrors(validationErrors.filter(error => error.field !== `${field}-${index}`))
     }
   }
 
@@ -65,6 +70,7 @@ export default function SplitPage() {
         ? { ...range, splitUrl: value }
         : range
     ))
+    setValidationErrors(validationErrors.filter(error => error.field !== `splitUrl-${index}`))
   }
 
   const addPageRange = () => {
@@ -73,7 +79,7 @@ export default function SplitPage() {
     const newRange = {
       start: nextStart,
       end: nextStart + 1,
-      splitUrl: fileUrl ? generateSplitUrl(fileUrl, pageRanges.length + 1) : ""
+      splitUrl: ""
     }
     setPageRanges([...pageRanges, newRange])
   }
@@ -87,41 +93,74 @@ export default function SplitPage() {
     const newRanges = [...pageRanges]
     newRanges.splice(index, 1)
     setPageRanges(newRanges)
+    setValidationErrors(validationErrors.filter(error => !error.field.includes(`-${index}`)))
+  }
+
+  const validateInputs = (): ValidationError[] => {
+    const errors: ValidationError[] = [];
+
+    if (!fileUrl) {
+      errors.push({ field: 'fileUrl', message: 'Input file URL is required' })
+    } else if (!validateUrl(fileUrl)) {
+      errors.push({ field: 'fileUrl', message: 'Invalid PDF URL. URL must end with .pdf' })
+    }
+
+    pageRanges.forEach((range, index) => {
+      if (range.start > range.end) {
+        errors.push({ 
+          field: `range-${index}`, 
+          message: `Invalid page range: ${range.start}-${range.end}. Start page must be less than or equal to end page.`
+        })
+      }
+
+      if (!range.splitUrl) {
+        errors.push({ 
+          field: `splitUrl-${index}`, 
+          message: `Output URL is required for range ${index + 1}` 
+        })
+      } else if (!validateUrl(range.splitUrl)) {
+        errors.push({ 
+          field: `splitUrl-${index}`, 
+          message: `Invalid PDF URL for range ${index + 1}. URL must end with .pdf` 
+        })
+      }
+    })
+
+    return errors;
   }
 
   const handleSplitFile = async () => {
-    if (!fileUrl) {
-      setError("Please enter a file URL to split")
-      return
-    }
-
     try {
-      setIsLoading(true)
-      setError(null)
-
-      // Validate page ranges and split URLs
-      for (const range of pageRanges) {
-        if (range.start > range.end) {
-          throw new Error(
-            `Invalid page range: ${range.start}-${range.end}. Start page must be less than or equal to end page.`
-          )
-        }
-        if (!range.splitUrl) {
-          throw new Error("All split URLs must be specified")
-        }
+      const errors = validateInputs()
+      if (errors.length > 0) {
+        setValidationErrors(errors)
+        return
       }
 
-      const response = await createSplit(
-        fileUrl, 
-        pageRanges.map(r => [r.start, r.end] as [number, number]),
-        pageRanges.map(r => r.splitUrl)
-      )
+      setIsLoading(true)
+      setError(null)
+      setValidationErrors([])
+
+      const request: SplitRequest = {
+        file_name: fileUrl,
+        page_ranges: pageRanges.map(r => [r.start, r.end] as [number, number]),
+        split_files: pageRanges.map(r => r.splitUrl)
+      }
+
+      const response = await splitService.split(request);
+      if (!response) {
+        throw new Error("No split files were created")
+      }
       setResult(response)
     } catch (err) {
       setError(err instanceof Error ? err.message : "An unknown error occurred")
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const getFieldError = (field: string): string | undefined => {
+    return validationErrors.find(error => error.field === field)?.message
   }
 
   return (
@@ -152,9 +191,12 @@ export default function SplitPage() {
               type="url" 
               placeholder="Enter PDF file URL" 
               value={fileUrl}
-              onChange={handleUrlChange} 
+              onChange={handleUrlChange}
+              className={getFieldError('fileUrl') ? 'border-red-500' : ''}
             />
-            {fileUrl && <p className="text-sm text-muted-foreground">File URL: {fileUrl}</p>}
+            {getFieldError('fileUrl') && (
+              <p className="text-sm text-red-500">{getFieldError('fileUrl')}</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -171,7 +213,7 @@ export default function SplitPage() {
                       min="1"
                       value={range.start}
                       onChange={(e) => handlePageRangeChange(index, 'start', e.target.value)}
-                      className="w-20"
+                      className={`w-20 ${getFieldError(`range-${index}`) ? 'border-red-500' : ''}`}
                     />
                     <span>to</span>
                     <Input
@@ -179,7 +221,7 @@ export default function SplitPage() {
                       min="1"
                       value={range.end}
                       onChange={(e) => handlePageRangeChange(index, 'end', e.target.value)}
-                      className="w-20"
+                      className={`w-20 ${getFieldError(`range-${index}`) ? 'border-red-500' : ''}`}
                     />
                   </div>
                   {pageRanges.length > 2 && (
@@ -188,14 +230,20 @@ export default function SplitPage() {
                     </Button>
                   )}
                 </div>
+                {getFieldError(`range-${index}`) && (
+                  <p className="text-sm text-red-500">{getFieldError(`range-${index}`)}</p>
+                )}
                 <div className="ml-20">
                   <Input
                     type="url"
                     placeholder="Split file URL"
                     value={range.splitUrl}
                     onChange={(e) => handleSplitUrlChange(index, e.target.value)}
-                    className="w-full"
+                    className={getFieldError(`splitUrl-${index}`) ? 'border-red-500' : ''}
                   />
+                  {getFieldError(`splitUrl-${index}`) && (
+                    <p className="text-sm text-red-500">{getFieldError(`splitUrl-${index}`)}</p>
+                  )}
                 </div>
               </div>
             ))}
