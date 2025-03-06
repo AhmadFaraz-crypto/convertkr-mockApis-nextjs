@@ -4,13 +4,14 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
-import { Download, FileText, Loader2 } from "lucide-react"
+import { Download, FileText, Loader2, Eye } from "lucide-react"
 import { mergeService, type MergeResponse } from "@/services/merge.service"
 
 export default function ViewMergedFilesPage() {
   const [mergedFiles, setMergedFiles] = useState<MergeResponse[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [fileErrors, setFileErrors] = useState<{ [key: string]: string }>({})
 
   useEffect(() => {
     fetchMergedFiles()
@@ -26,6 +27,31 @@ export default function ViewMergedFilesPage() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const isValidUrl = (url: string): boolean => {
+    try {
+      new URL(url)
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  const handleFileClick = (url: string, errorKey: string) => {
+    if (!isValidUrl(url)) {
+      setFileErrors(prev => ({
+        ...prev,
+        [errorKey]: "Invalid URL format"
+      }))
+      return false
+    }
+    setFileErrors(prev => {
+      const newErrors = { ...prev }
+      delete newErrors[errorKey]
+      return newErrors
+    })
+    return true
   }
 
   if (isLoading) {
@@ -56,7 +82,7 @@ export default function ViewMergedFilesPage() {
         </Alert>
       ) : (
         <div className="grid gap-6">
-          {mergedFiles.map((merge, index) => (
+          {mergedFiles.map((mergedFile, index) => (
             <Card key={index}>
               <CardHeader>
                 <CardTitle className="text-lg">Merged File {index + 1}</CardTitle>
@@ -65,38 +91,92 @@ export default function ViewMergedFilesPage() {
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <p className="text-sm font-medium">Source Files:</p>
-                    <ul className="text-sm space-y-1 list-disc pl-5">
-                      {merge.files.map((file, fileIndex) => (
-                        <li key={fileIndex}>
-                          <a 
-                            href={file} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="hover:underline flex items-center"
-                          >
-                            <FileText className="h-4 w-4 mr-2" />
-                            {file.split("/").pop()}
-                          </a>
-                        </li>
+                    <div className="space-y-2">
+                      {mergedFile.files.map((file, fileIndex) => (
+                        <div key={fileIndex}>
+                          <div className="flex items-center justify-between p-2 bg-muted rounded-md">
+                            <div className="flex items-center">
+                              <FileText className="h-4 w-4 mr-2" />
+                              <span className="text-sm">{file.split("/").pop()}</span>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => {
+                                  if (handleFileClick(file, `source-${index}-${fileIndex}`)) {
+                                    window.open(file, '_blank')
+                                  }
+                                }}
+                              >
+                                <Eye className="mr-2 h-4 w-4" />
+                                Open
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => {
+                                  if (handleFileClick(file, `source-${index}-${fileIndex}`)) {
+                                    const a = document.createElement('a')
+                                    a.href = file
+                                    a.download = file.split("/").pop() || ""
+                                    a.click()
+                                  }
+                                }}
+                              >
+                                <Download className="mr-2 h-4 w-4" />
+                                Download
+                              </Button>
+                            </div>
+                          </div>
+                          {fileErrors[`source-${index}-${fileIndex}`] && (
+                            <p className="text-sm text-red-500 mt-1">{fileErrors[`source-${index}-${fileIndex}`]}</p>
+                          )}
+                        </div>
                       ))}
-                    </ul>
+                    </div>
                   </div>
 
-                  <div className="flex items-center justify-between p-3 bg-muted rounded-md">
-                    <div className="flex items-center">
-                      <FileText className="h-4 w-4 mr-2" />
-                      <span>{merge.merged_file.split("/").pop()}</span>
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Merged Result:</p>
+                    <div className="flex items-center justify-between p-2 bg-muted rounded-md">
+                      <div className="flex items-center">
+                        <FileText className="h-4 w-4 mr-2" />
+                        <span className="text-sm">{mergedFile.merged_file.split("/").pop()}</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => {
+                            if (handleFileClick(mergedFile.merged_file, `merged-${index}`)) {
+                              window.open(mergedFile.merged_file, '_blank')
+                            }
+                          }}
+                        >
+                          <Eye className="mr-2 h-4 w-4" />
+                          Open Merged
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => {
+                            if (handleFileClick(mergedFile.merged_file, `merged-${index}`)) {
+                              const a = document.createElement('a')
+                              a.href = mergedFile.merged_file
+                              a.download = mergedFile.merged_file.split("/").pop() || ""
+                              a.click()
+                            }
+                          }}
+                        >
+                          <Download className="mr-2 h-4 w-4" />
+                          Download
+                        </Button>
+                      </div>
                     </div>
-                    <Button variant="outline" size="sm" asChild>
-                      <a 
-                        href={merge.merged_file} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                      >
-                        <Download className="mr-2 h-4 w-4" />
-                        Download
-                      </a>
-                    </Button>
+                    {fileErrors[`merged-${index}`] && (
+                      <p className="text-sm text-red-500 mt-1">{fileErrors[`merged-${index}`]}</p>
+                    )}
                   </div>
                 </div>
               </CardContent>
