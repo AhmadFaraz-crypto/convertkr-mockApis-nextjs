@@ -2,46 +2,16 @@ import Link from "next/link"
 import { ArrowRight, Combine, Scissors, History } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-
 export default function Home() {
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-40 w-full border-b bg-background">
-        <div className="container flex h-16 items-center space-x-4 sm:justify-between sm:space-x-0">
-          <div className="flex gap-6 md:gap-10">
-            <Link href="/" className="flex items-center space-x-2">
-              <span className="inline-block font-bold">API Demo</span>
-            </Link>
-            <nav className="flex gap-6">
-              <Link
-                href="/merge"
-                className="flex items-center text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
-              >
-                Merge
-              </Link>
-              <Link
-                href="/split"
-                className="flex items-center text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
-              >
-                Split
-              </Link>
-              <Link
-                href="/conversions"
-                className="flex items-center text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
-              >
-                Conversions
-              </Link>
-            </nav>
-          </div>
-        </div>
-      </header>
       <main className="flex-1">
         <section className="w-full py-12 md:py-24 lg:py-32 xl:py-48">
           <div className="container px-4 md:px-6">
             <div className="flex flex-col items-center space-y-4 text-center">
               <div className="space-y-2">
                 <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl">
-                  API Demo Platform
+                  ConvertKr API Demo Platform
                 </h1>
                 <p className="mx-auto max-w-[700px] text-muted-foreground md:text-xl">
                   Explore our powerful APIs for merging, splitting, and tracking conversions.
@@ -173,24 +143,6 @@ export default function Home() {
           </div>
         </section>
       </main>
-      <footer className="w-full border-t py-6">
-        <div className="container flex flex-col items-center justify-center gap-4 md:flex-row md:gap-8">
-          <p className="text-center text-sm leading-loose text-muted-foreground">
-            © {new Date().getFullYear()} API Demo. All rights reserved.
-          </p>
-          <nav className="flex gap-4 sm:gap-6">
-            <Link href="/terms" className="text-sm font-medium text-muted-foreground hover:text-primary">
-              Terms
-            </Link>
-            <Link href="/privacy" className="text-sm font-medium text-muted-foreground hover:text-primary">
-              Privacy
-            </Link>
-            <Link href="/docs" className="text-sm font-medium text-muted-foreground hover:text-primary">
-              Docs
-            </Link>
-          </nav>
-        </div>
-      </footer>
     </div>
   )
 }

@@ -9,9 +9,8 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { FileUp, Download, Settings2, Loader2 } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { createConversion, type ConversionResponse } from "../lib/api"
 import { useRouter } from 'next/navigation'
-
+import { ConversionResponse, conversionService } from "@/services/conversion.service"
 // Available conversion formats
 const conversionFormats = {
   pdf: ["png", "jpg"],
@@ -75,7 +74,7 @@ export default function ConversionsPage() {
       setIsConverting(true)
       setError(null)
 
-      const response = await createConversion({
+      const response = await conversionService.convert({
         file_type: fileType,
         file_url: fileUrl,
         target_type: targetType,
